@@ -1,0 +1,14 @@
+{
+  "fields": {
+    "surname": "NOWAK",
+    "givenName": "ANNA",
+    "passport": "XA1234567",
+    "email": "anna.nowak@example.com"
+  },
+  "documents": [
+    {
+      "path": "demo/sample.pdf",
+      "target": "#passport-pdf"
+    }
+  ]
+}

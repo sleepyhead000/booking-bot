@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Visa Appointments — Book</title>
+    <link rel="stylesheet" href="/public/styles.css" />
+    <script src="/public/challenge.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <strong>Appointment portal</strong>
+      <span id="who" class="muted"></span>
+      <button id="logout" type="button" class="link">Sign out</button>
+    </header>
+
+    <main class="wide">
+      <section class="card" id="calendar-card">
+        <h1>Available appointments</h1>
+        <p class="muted">Select a date, then a time.</p>
+        <div class="calendar-head">
+          <p class="muted" data-testid="calendar-status">Loading availability…</p>
+          <button id="refresh-slots" type="button" class="secondary" data-testid="refresh-slots">
+            Check again
+          </button>
+        </div>
+        <div id="calendar" class="calendar" data-testid="calendar"></div>
+        <p id="selection" class="selection" data-testid="selection">No date selected</p>
+      </section>
+
+      <section class="card" id="form-card">
+        <h1>Applicant details</h1>
+        <form id="app-form" autocomplete="off">
+          <div class="grid">
+            <div>
+              <label for="surname">Surname</label>
+              <input id="surname" name="surname" type="text" required />
+            </div>
+            <div>
+              <label for="givenName">Given name(s)</label>
+              <input id="givenName" name="givenName" type="text" required />
+            </div>
+            <div>
+              <label for="passport">Passport number</label>
+              <input id="passport" name="passport" type="text" required />
+            </div>
+            <div>
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" required />
+            </div>
+          </div>
+
+          <label for="passport-pdf">Passport bio page (PDF)</label>
+          <input
+            id="passport-pdf"
+            name="passportPdf"
+            type="file"
+            accept="application/pdf,.pdf"
+            data-testid="document-upload"
+            required
+          />
+          <p id="file-info" class="muted" data-testid="file-info">No file selected</p>
+
+          <button id="submit-button" type="submit">Confirm booking</button>
+          <p id="form-error" class="error" hidden></p>
+        </form>
+      </section>
+
+      <section class="card" id="done-card" hidden>
+        <h1>Appointment confirmed</h1>
+        <p id="confirmation" data-testid="confirmation"></p>
+        <button id="again" type="button" class="secondary">Book another</button>
+      </section>
+    </main>
+
+    <script>
+      let selectedSlotId = null;
+      let slotsByDate = {};
+
+      async function api(path, opts) {
+        const res = await fetch(path, opts);
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          window.location.href = '/';
+          throw new Error('not authenticated');
+        }
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        return data;
+      }
+
+      function fmtDay(d) {
+        return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+      }
+
+      function setStatus(text) {
+        const el = document.querySelector('[data-testid="calendar-status"]');
+        if (el) el.textContent = text;
+      }
+
+      function renderCalendar(slots) {
+        slotsByDate = {};
+        for (const s of slots) (slotsByDate[s.date] ??= []).push(s);
+
+        const dates = Object.keys(slotsByDate).sort();
+        const cal = document.getElementById('calendar');
+        if (!dates.length) {
+          cal.innerHTML = '<p class="muted" data-testid="no-availability">No availability right now.</p>';
+          setStatus('No availability right now. Checking…');
+          return;
+        }
+
+        const byMonth = {};
+        for (const d of dates) {
+          const key = d.slice(0, 7);
+          (byMonth[key] ??= []).push(d);
+        }
+
+        cal.innerHTML = Object.entries(byMonth)
+          .map(([month, days]) => {
+            const label = new Date(days[0] + 'T00:00:00').toLocaleDateString('en-GB', {
+              month: 'long',
+              year: 'numeric',
+            });
+            return `<section class="month" data-month="${month}">
+              <h2>${label}</h2>
+              <div class="days">
+                ${days
+                  .map((d) => {
+                    const list = slotsByDate[d];
+                    return `<button type="button" class="day available" data-date="${d}"
+                      data-slot-ids="${list.map((s) => s.id).join(',')}"
+                      data-count="${list.length}"
+                      aria-label="${fmtDay(new Date(d + 'T00:00:00'))}, ${list.length} slot(s)">${Number(d.slice(8))}</button>`;
+                  })
+                  .join('')}
+              </div>
+            </section>`;
+          })
+          .join('');
+
+        cal.querySelectorAll('.day.available').forEach((btn) => {
+          btn.addEventListener('click', () => showTimes(btn.getAttribute('data-date')));
+        });
+        setStatus(`${slots.length} appointment(s) available`);
+      }
+
+      function showTimes(date) {
+        document.querySelectorAll('.day.selected').forEach((el) => el.classList.remove('selected'));
+        document.querySelector(`.day[data-date="${date}"]`)?.classList.add('selected');
+
+        let panel = document.getElementById('times');
+        if (!panel) {
+          panel = document.createElement('div');
+          panel.id = 'times';
+          panel.className = 'times';
+          panel.setAttribute('data-testid', 'times');
+          document.getElementById('calendar').appendChild(panel);
+        }
+        panel.innerHTML = slotsByDate[date]
+          .map(
+            (s) =>
+              `<button type="button" class="time" data-slot-id="${s.id}" data-testid="time-slot">${s.time}</button>`,
+          )
+          .join('');
+        panel.querySelectorAll('.time').forEach((b) =>
+          b.addEventListener('click', () => {
+            panel.querySelectorAll('.time.selected').forEach((el) => el.classList.remove('selected'));
+            b.classList.add('selected');
+            selectedSlotId = b.getAttribute('data-slot-id');
+            document.getElementById('selection').textContent = `Selected: ${date} ${selectedSlotId.slice(-5)}`;
+          }),
+        );
+      }
+
+      async function refresh() {
+        setStatus('Checking…');
+        try {
+          const data = await api('/api/slots');
+          renderCalendar(data.slots);
+        } catch (e) {
+          if (String(e.message) !== 'not authenticated') {
+            setStatus('Could not load availability.');
+            console.warn(e);
+          }
+        }
+      }
+
+      document.getElementById('refresh-slots').addEventListener('click', refresh);
+
+      document.getElementById('app-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const err = document.getElementById('form-error');
+        err.hidden = true;
+        const btn = document.getElementById('submit-button');
+        if (!selectedSlotId) {
+          err.textContent = 'Please select an appointment time first.';
+          err.hidden = false;
+          return;
+        }
+        const file = document.getElementById('passport-pdf').files[0];
+        if (!file) {
+          err.textContent = 'Please attach the passport PDF.';
+          err.hidden = false;
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Submitting…';
+        try {
+          const fields = {};
+          for (const id of ['surname', 'givenName', 'passport', 'email']) {
+            fields[id] = document.getElementById(id).value.trim();
+          }
+          const data = await api('/api/book', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              slotId: selectedSlotId,
+              fields,
+              documents: [{ name: file.name, size: file.size, type: file.type || 'application/pdf' }],
+            }),
+          });
+          document.getElementById('calendar-card').hidden = true;
+          document.getElementById('form-card').hidden = true;
+          const done = document.getElementById('done-card');
+          done.hidden = false;
+          document.getElementById('confirmation').textContent =
+            `Confirmed ${data.slot.date} at ${data.slot.time} — reference ${data.reference}`;
+        } catch (ex) {
+          err.textContent = ex.message;
+          err.hidden = false;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Confirm booking';
+        }
+      });
+
+      document.getElementById('passport-pdf').addEventListener('change', (e) => {
+        const f = e.target.files[0];
+        document.getElementById('file-info').textContent = f
+          ? `${f.name} (${Math.max(1, Math.round(f.size / 1024))} KB)`
+          : 'No file selected';
+      });
+
+      document.getElementById('logout').addEventListener('click', async () => {
+        document.cookie = 'sid=; Max-Age=0; Path=/';
+        window.location.href = '/';
+      });
+
+      (async function init() {
+        const me = await fetch('/api/me').then((r) => r.json()).catch(() => ({ authed: false }));
+        if (!me.authed) {
+          window.location.href = '/';
+          return;
+        }
+        document.getElementById('who').textContent = me.user ?? '';
+        await refresh();
+        setInterval(refresh, 15000);
+      })();
+    </script>
+  </body>
+</html>

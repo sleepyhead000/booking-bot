@@ -1,0 +1,43 @@
+# Booking bot — container runtime.
+#
+#   docker compose run --rm bot doctor   # verify stealth in the image
+#   docker compose run --rm bot run      # single attempt: find + book a slot
+#   docker compose up -d bot             # long-running monitor loop
+#
+# Everything the bot needs at runtime comes from .env + ./config.
+# Your local ./config is mounted over the image's copy so you can edit
+# default.yaml / applicant.json without rebuilding.
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: booking-bot:local
+    container_name: booking-bot
+    # Pick the command you want; `monitor` is the long-running mode.
+    command: ["monitor"]
+    env_file:
+      - .env
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./storage:/app/storage
+      - ./config:/app/config:ro
+    # A portal that needs your IP range will want a residential/mobile proxy:
+    #   BOT_PROXY_URL=http://user:pass@host:port   (set it in .env instead)
+    #
+    # restart: "no"          # one-shot (`run`, `login`, `inspect`, `doctor`)
+    # restart: unless-stopped  # long-running `monitor`
+    restart: "no"
+    stop_grace_period: 30s
+    init: true
+    # Chromium likes a little shared memory; the bot also passes
+    # --disable-dev-shm-usage, so this is belt-and-braces.
+    shm_size: 512mb
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    # If your host blocks the container from writing ./storage, drop the
+    # user namespace mapping entirely:
+    #   user: "0:0"

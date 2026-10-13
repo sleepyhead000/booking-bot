@@ -1,0 +1,30 @@
+# VCS / tooling
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# Dependencies & build output (rebuilt inside the image)
+node_modules
+dist
+coverage
+
+# Local secrets — never bake credentials into an image
+.env
+.env.*
+!.env.example
+
+# Development-only material: the demo portal, tests and docs stay on the host.
+# (The runtime image contains just dist/, config/ and node_modules.)
+test
+demo
+README.md
+Dockerfile
+docker-compose.yml
+
+# Runtime state and user data
+storage
+logs
+config/applicant.json
+*.log

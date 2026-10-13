@@ -1,0 +1,60 @@
+# Non-secret runtime configuration.
+# Secrets (credentials, tokens, proxy url, solver keys) come from .env — see .env.example.
+# Values here can be overridden by environment variables with the same name in UPPER_SNAKE.
+
+adapter: reference # which PortalAdapter to load (folder under src/adapter/)
+
+browser:
+  headless: true # run without a visible window (set false to watch, or use --headed)
+  slowMo: 0 # ms delay between playwright actions; useful for debugging
+  viewport: [1366, 768]
+  locale: en-US
+  timezoneId: Europe/Warsaw
+  # Optional stealth hardening. "standard" = init-script patches (default).
+  # "rebrowser" = additionally load rebrowser-patches if installed (see README).
+  stealth: standard
+
+session:
+  dir: storage/sessions
+  # Re-use a saved session for this many minutes before forcing a fresh login.
+  maxAgeMinutes: 720
+
+monitor:
+  # Adaptive polling. Interval is randomized inside [minMs, maxMs] each cycle
+  # so requests never arrive on a metronome (a bot tell).
+  minIntervalMs: 4000
+  maxIntervalMs: 12000
+  # When no slots are found the interval backs off exponentially up to this cap.
+  backoffMaxMs: 60000
+  # Stop polling after this many consecutive empty cycles (0 = never stop).
+  maxEmptyCycles: 0
+  # Sniff the calendar's XHR/JSON responses instead of scraping the DOM (faster).
+  preferApiSniffing: true
+
+booking:
+  # Date window and weekdays to accept, in the portal's local time.
+  dateFrom: null # YYYY-MM-DD or null for "any"
+  dateTo: null
+  weekdays: [1, 2, 3, 4, 5] # 0=Sunday .. 6=Saturday; [] = any weekday
+  # Abort if the target slot is taken between detection and selection.
+  selectionTimeoutMs: 15000
+  # Applicant form fields + documents to attach (see config/applicant.example.json).
+  applicantFile: config/applicant.json
+
+otp:
+  # Seconds to wait for you to enter the code (terminal or Telegram reply).
+  timeoutSec: 180
+  # Ask for a new code when the previous one is rejected.
+  maxAttempts: 3
+
+notify:
+  console: true
+  telegram: true
+
+solver:
+  provider: manual # manual | <your-provider-id>
+  timeoutSec: 120
+
+logging:
+  level: info
+  dir: storage/logs

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Visa Appointments — Sign in</title>
+    <link rel="stylesheet" href="/public/styles.css" />
+    <script src="/public/challenge.js" defer></script>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Sign in</h1>
+      <p class="muted">Demo appointment portal</p>
+      <form id="login-form" autocomplete="off">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required />
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required />
+
+        <button id="login-button" type="submit">Continue</button>
+        <p id="login-error" class="error" hidden></p>
+      </form>
+    </main>
+    <script>
+      document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const err = document.getElementById('login-error');
+        err.hidden = true;
+        const btn = document.getElementById('login-button');
+        btn.disabled = true;
+        btn.textContent = 'Signing in…';
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              username: document.getElementById('username').value.trim(),
+              password: document.getElementById('password').value,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Login failed');
+          window.location.href = '/otp';
+        } catch (ex) {
+          err.textContent = ex.message;
+          err.hidden = false;
+          btn.disabled = false;
+          btn.textContent = 'Continue';
+        }
+      });
+    </script>
+  </body>
+</html>

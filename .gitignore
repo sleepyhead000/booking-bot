@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+storage/sessions/
+storage/artifacts/
+storage/logs/
+storage/*.lock
+logs/
+config/applicant.json
+.env
+*.log
+.DS_Store
+demo/sample.pdf

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Visa Appointments — Verification</title>
+    <link rel="stylesheet" href="/public/styles.css" />
+    <script src="/public/challenge.js" defer></script>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Enter the code we sent you</h1>
+      <p class="muted">A 6-digit verification code was sent to your phone.</p>
+      <form id="otp-form" autocomplete="one-time-code">
+        <label for="code">Verification code</label>
+        <input
+          id="code"
+          name="code"
+          type="text"
+          inputmode="numeric"
+          pattern="[0-9]{6}"
+          maxlength="6"
+          placeholder="123456"
+          required
+        />
+        <button id="otp-button" type="submit">Verify</button>
+        <button id="resend-button" type="button" class="secondary">Resend code</button>
+        <p id="otp-error" class="error" hidden></p>
+        <p id="otp-info" class="info" hidden></p>
+      </form>
+    </main>
+    <script>
+      document.getElementById('otp-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const err = document.getElementById('otp-error');
+        const info = document.getElementById('otp-info');
+        err.hidden = true;
+        info.hidden = true;
+        const btn = document.getElementById('otp-button');
+        btn.disabled = true;
+        btn.textContent = 'Verifying…';
+        try {
+          const res = await fetch('/api/otp', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ code: document.getElementById('code').value.trim() }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Verification failed');
+          window.location.href = '/book';
+        } catch (ex) {
+          err.textContent = ex.message;
+          err.hidden = false;
+          btn.disabled = false;
+          btn.textContent = 'Verify';
+        }
+      });
+
+      document.getElementById('resend-button').addEventListener('click', async () => {
+        const info = document.getElementById('otp-info');
+        const err = document.getElementById('otp-error');
+        err.hidden = true;
+        const res = await fetch('/api/otp/resend', { method: 'POST' });
+        if (res.ok) {
+          info.textContent = 'A new code has been sent.';
+          info.hidden = false;
+        } else {
+          const data = await res.json().catch(() => ({}));
+          err.textContent = data.error || 'Could not resend';
+          err.hidden = false;
+        }
+      });
+    </script>
+  </body>
+</html>
