@@ -2,7 +2,7 @@ import type { Page, BrowserContext } from 'playwright';
 import type { Config, TargetFilter } from '../config/schema.js';
 import type { PortalAdapter, Slot, ApplicationData, Credentials } from '../adapter/types.js';
 import type { Notifier } from '../notify/index.js';
-import { BrowserManager } from './browser.js';
+import { BrowserManager, type ContextOptions } from './browser.js';
 import { SessionStore } from './session.js';
 import { ChallengeGuard } from './challenge.js';
 import { ensureAuthenticated, saveSession } from './auth.js';
@@ -33,6 +33,8 @@ export interface RunnerDeps {
   credentials: Credentials;
   application: ApplicationData;
   signal?: AbortSignal;
+  /** Extra browser-context options — video recording, proxy override, headers. */
+  contextOptions?: ContextOptions;
 }
 
 /**
@@ -67,7 +69,10 @@ export class BookingRunner {
     const { adapter, session, manager, config } = this.deps;
     const statePath = session.stateToLoad(adapter.id);
 
-    const context = await manager.newContext({ storageStatePath: statePath });
+    const context = await manager.newContext({
+      storageStatePath: statePath,
+      ...this.deps.contextOptions,
+    });
     const page = await context.newPage();
     this.page = page;
 

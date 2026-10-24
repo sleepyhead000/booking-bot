@@ -1,5 +1,8 @@
 # booking-bot
 
+[![CI](https://github.com/sleepyhead000/booking-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/sleepyhead000/booking-bot/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A portal-agnostic web booking & slot-monitoring bot: it logs into an appointment
 portal, watches for availability that matches your criteria, and books it the
 moment it appears.
@@ -8,6 +11,30 @@ Built with **Node.js 24 + TypeScript + Playwright**. Everything that is
 portal-specific (selectors, page order, API shapes) lives in a small
 **adapter**; session handling, adaptive polling, OTP entry, notifications and
 anti-bot handling are shared and stay unchanged when you add a portal.
+
+## Demo
+
+Real recording of the bot at work — no mock, no cuts. It signs in with
+human-like typing, waits for the calendar to populate, picks a matching slot,
+fills the application, attaches a PDF and confirms the booking (18 s):
+
+![booking-bot demo: sign in, watch availability, fill the form, confirm the booking](docs/demo.gif)
+
+<p align="center"><a href="docs/demo.mp4">▶ Full-resolution recording (MP4, 18 s)</a></p>
+
+<details>
+<summary>Regenerate it yourself</summary>
+
+```bash
+npm run demo:record   # boots the demo portal, drives the real runner → .demo-capture/session.webm
+npm run demo:encode   # converts it → docs/demo.mp4 (ffmpeg required)
+ffmpeg -y -i docs/demo.mp4 -filter_complex "[0:v]fps=12,scale=640:-2:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer:bayer_scale=4[out]" -map "[out]" -loop 0 docs/demo.gif
+```
+
+`scripts/record-demo.ts` uses the same `BookingRunner` the CLI does — the only
+difference is that the browser context records video.
+
+</details>
 
 ```
 ┌────────────┐   ┌──────────────┐   ┌──────────────┐   ┌────────────┐

@@ -20,6 +20,11 @@ export interface ContextOptions {
   proxy?: string;
   /** Extra HTTP headers applied to every request in this context. */
   headers?: Record<string, string>;
+  /**
+   * Record the session to a .webm (Playwright/Chromium). Used by the README
+   * demo capture and by `--set browser.recordVideo=...` when debugging a run.
+   */
+  recordVideo?: { dir: string; size?: [number, number] };
 }
 
 /**
@@ -103,6 +108,11 @@ export class BrowserManager {
 
     const statePath = opts.storageStatePath ? resolve(opts.storageStatePath) : undefined;
     if (statePath) contextOpts.storageState = statePath;
+
+    if (opts.recordVideo) {
+      const [width, height] = opts.recordVideo.size ?? [this.config.browser.viewport[0], this.config.browser.viewport[1]];
+      contextOpts.recordVideo = { dir: resolve(opts.recordVideo.dir), size: { width, height } };
+    }
 
     const context = await browser.newContext(contextOpts);
 

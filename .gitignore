@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+.demo-capture/
 storage/sessions/
 storage/artifacts/
 storage/logs/
